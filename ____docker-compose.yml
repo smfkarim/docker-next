@@ -1,0 +1,38 @@
+# docker-compose version
+version: '3.8'
+
+# docker-compose services
+services:
+  # service name anything we want we called it web
+  web:
+    # path to dockerfile is called build
+    build: .
+
+    # image name we called it nextjs-cicd-docker:version
+    image: nextjs-cicd-docker:1.0
+    restart: always
+
+    # ports to expose first 3000 is the port of the container and the second 3000 is the port we define in the dockerfile
+    ports:
+      - '3000:3000'
+  nginx:
+    image: nginx:stable-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - nextjs
+
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done"
